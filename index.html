@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Performance Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1e293b;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #38bdf8;
+        }
+        .metric-box {
+            background-color: #334155;
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 0.5rem;
+            color: #f1f5f9;
+        }
+        button {
+            background-color: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        button:hover {
+            background-color: #7dd3fc;
+        }
+        button:disabled {
+            background-color: #64748b;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Network Performance Tester</h1>
+    
+    <div class="metric-box">
+        <div class="label">Real Delay</div>
+        <div id="latency-val" class="value">-- ms</div>
+    </div>
+
+    <div class="metric-box">
+        <div class="label">Download Speed</div>
+        <div id="speed-val" class="value">-- Mbps</div>
+    </div>
+
+    <button id="test-btn" onclick="runNetworkTest()">Run Test</button>
+</div>
+
+<script>
+// ==========================================
+// CONFIGURATION: FILL IN YOUR FILE PATHS HERE
+// ==========================================
+const LATENCY_TARGET = 'https://666jrmusic.ccwu.cc'; 
+
+// Put the relative path or absolute link to your test asset inside the quotes below
+// Example: './media/large-file.mp3' or 'https://666jrmusic.ccwu.cc/assets/test.bin'
+const SPEED_TEST_FILE = ''; 
+// ==========================================
+
+async function testLatency() {
+    const startTime = performance.now();
+    try {
+        // Appending a timestamp query string to bypass proxy/CDN caching
+        await fetch(`${LATENCY_TARGET}?cb=${Date.now()}`, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+        const endTime = performance.now();
+        return Math.round(endTime - startTime);
+    } catch (error) {
+        console.error("Latency test failed:", error);
+        return null;
+    }
+}
+
+async function testSpeed() {
+    if (!SPEED_TEST_FILE) {
+        console.warn("Speed test target variable is blank.");
+        return "Configure File";
+    }
+
+    const startTime = performance.now();
+    try {
+        const response = await fetch(`${SPEED_TEST_FILE}?cb=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const blob = await response.blob();
+        const endTime = performance.now();
+        
+        const durationInSeconds = (endTime - startTime) / 1000;
+        // Avoid division by zero if downloaded instantaneously
+        const safeDuration = durationInSeconds === 0 ? 0.001 : durationInSeconds;
+        
+        const fileSizeInBits = blob.size * 8;
+        const speedBps = fileSizeInBits / safeDuration;
+        const speedMbps = speedBps / (1024 * 1024);
+        
+        return speedMbps.toFixed(2);
+    } catch (error) {
+        console.error("Speed test failed:", error);
+        return "Path Error";
+    }
+}
+
+async function runNetworkTest() {
+    const btn = document.getElementById('test-btn');
+    const latencyDisplay = document.getElementById('latency-val');
+    const speedDisplay = document.getElementById('speed-val');
+    
+    btn.disabled = true;
+    btn.innerText = "Testing...";
+    latencyDisplay.innerText = "Measuring...";
+    speedDisplay.innerText = "Measuring...";
+
+    // 1. Run Latency
+    const latency = await testLatency();
+    latencyDisplay.innerText = latency !== null ? `${latency} ms` : "Failed";
+
+    // 2. Run Speed
+    const speed = await testSpeed();
+    if (speed === "Configure File" || speed === "Path Error") {
+        speedDisplay.innerText = speed;
+    } else {
+        speedDisplay.innerText = `${speed} Mbps`;
+    }
+
+    btn.disabled = false;
+    btn.innerText = "Run Test";
+}
+</script>
+
+</body>
+</html>
